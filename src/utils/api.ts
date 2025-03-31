@@ -92,7 +92,7 @@ export const submitQuiz = async (
 ): Promise<QuizResults> => {
   try {
     const response = await api.post(`/submit-quiz/${quizId}`, { answers });
-    return response as QuizResults;
+    return response as unknown as QuizResults;
   } catch (error: any) {
     console.error('Error submitting quiz:', error);
     throw error;

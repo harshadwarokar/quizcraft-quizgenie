@@ -3,17 +3,21 @@ import { useEffect, useState } from "react";
 import { Timer as TimerIcon } from "lucide-react";
 
 interface TimerProps {
-  totalSeconds: number;
+  initialMinutes: number;
   onTimeEnd: () => void;
+  isQuizCompleted?: boolean;
 }
 
-const Timer: React.FC<TimerProps> = ({ totalSeconds, onTimeEnd }) => {
+const Timer: React.FC<TimerProps> = ({ initialMinutes, onTimeEnd, isQuizCompleted = false }) => {
+  const totalSeconds = initialMinutes * 60;
   const [timeRemaining, setTimeRemaining] = useState(totalSeconds);
   const [isWarning, setIsWarning] = useState(false);
 
   useEffect(() => {
-    if (timeRemaining <= 0) {
-      onTimeEnd();
+    if (timeRemaining <= 0 || isQuizCompleted) {
+      if (timeRemaining <= 0) {
+        onTimeEnd();
+      }
       return;
     }
 
@@ -27,7 +31,7 @@ const Timer: React.FC<TimerProps> = ({ totalSeconds, onTimeEnd }) => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeRemaining, totalSeconds, onTimeEnd, isWarning]);
+  }, [timeRemaining, totalSeconds, onTimeEnd, isWarning, isQuizCompleted]);
 
   // Convert seconds to minutes and seconds
   const minutes = Math.floor(timeRemaining / 60);
