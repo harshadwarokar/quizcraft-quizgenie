@@ -1,7 +1,6 @@
-
 import React from 'react';
 import PageLayout from '@/components/layout/PageLayout';
-import { BookOpen, FileText, Shield, Youtube, FileWord, MessageSquare, Brain } from 'lucide-react';
+import { BookOpen, FileText, Shield, Youtube, FileType, MessageSquare, Brain } from 'lucide-react';
 
 const AboutPage = () => {
   return (
@@ -91,7 +90,7 @@ const AboutPage = () => {
                   <span><strong>PDF Documents</strong> - Up to 4MB, ideal for academic papers, books, and course materials.</span>
                 </li>
                 <li className="flex items-start">
-                  <FileWord className="h-5 w-5 text-quiz-primary mr-2 mt-1" />
+                  <FileType className="h-5 w-5 text-quiz-primary mr-2 mt-1" />
                   <span><strong>Word Documents</strong> - Up to 4MB, perfect for essays, reports, and written assignments.</span>
                 </li>
                 <li className="flex items-start">

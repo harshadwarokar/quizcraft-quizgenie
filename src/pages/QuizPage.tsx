@@ -6,7 +6,7 @@ import QuizQuestion, { Question } from "@/components/QuizQuestion";
 import Timer from "@/components/Timer";
 import { toast } from "sonner";
 import { ArrowRight, ArrowLeft, FileText } from "lucide-react";
-import { submitQuiz } from "@/utils/api";
+import { submitQuiz as submitQuizAPI } from "@/utils/api";
 
 const QuizPage = () => {
   const navigate = useNavigate();
@@ -59,10 +59,10 @@ const QuizPage = () => {
 
   const handleTimeEnd = () => {
     toast.warning("Time's up! Your quiz has been submitted.");
-    submitQuiz();
+    handleSubmitQuiz();
   };
 
-  const submitQuiz = async () => {
+  const handleSubmitQuiz = async () => {
     // Mark the quiz as completed to prevent multiple submissions
     if (isQuizCompleted) return;
     setIsQuizCompleted(true);
@@ -71,7 +71,7 @@ const QuizPage = () => {
       // If we have a quizId, use the API to submit the quiz
       if (quizId) {
         const answers = questions.map(q => q.userAnswer || ""); // Get all user answers
-        const results = await submitQuiz(quizId, answers);
+        const results = await submitQuizAPI(quizId, answers);
         
         // Store results in session storage
         sessionStorage.setItem('quizResults', JSON.stringify(results.detailed_results));
@@ -186,7 +186,7 @@ const QuizPage = () => {
           </div>
           
           <button
-            onClick={submitQuiz}
+            onClick={handleSubmitQuiz}
             disabled={isQuizCompleted}
             className="quiz-button-secondary px-6 py-2"
           >

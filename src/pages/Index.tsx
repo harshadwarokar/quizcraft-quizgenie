@@ -1,7 +1,6 @@
-
 import { useNavigate } from "react-router-dom";
 import PageLayout from "@/components/layout/PageLayout";
-import { FileText, Timer, CheckSquare, Youtube, FileWord, MessageSquare } from "lucide-react";
+import { FileText, Timer, CheckSquare, Youtube, FileType, MessageSquare } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -102,7 +101,7 @@ const Index = () => {
 
             <div className="bg-white p-6 rounded-lg border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center space-x-3 mb-4">
-                <FileWord className="h-5 w-5 text-quiz-primary" />
+                <FileType className="h-5 w-5 text-quiz-primary" />
                 <h3 className="font-medium">Word Documents</h3>
               </div>
               <p className="text-sm text-gray-600">
