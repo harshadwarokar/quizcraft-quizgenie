@@ -9,6 +9,7 @@ import CreateQuiz from "./pages/CreateQuiz";
 import QuizPage from "./pages/QuizPage";
 import ResultsPage from "./pages/ResultsPage";
 import AboutPage from "./pages/AboutPage";
+import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/quiz" element={<QuizPage />} />
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

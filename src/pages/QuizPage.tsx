@@ -2,58 +2,71 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PageLayout from "@/components/layout/PageLayout";
-import QuizQuestion, { Question } from "@/components/QuizQuestion";
+import QuizQuestion from "@/components/QuizQuestion";
+import { Progress } from "@/components/ui/progress";
 import Timer from "@/components/Timer";
 import { toast } from "sonner";
 import { ArrowRight, ArrowLeft, FileText } from "lucide-react";
 import { submitQuiz as submitQuizAPI } from "@/utils/api";
+import AdBanner from "@/components/AdBanner";
+import AdPopup from "@/components/AdPopup";
+
+interface Question {
+  question: string;
+  options: string[];
+  userAnswer?: string;
+}
 
 const QuizPage = () => {
   const navigate = useNavigate();
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [fileName, setFileName] = useState<string>("");
-  const [timeMinutes, setTimeMinutes] = useState(15);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [timeInMinutes, setTimeInMinutes] = useState(15);
+  const [fileTitle, setFileTitle] = useState<string>("");
   const [isQuizCompleted, setIsQuizCompleted] = useState(false);
+  const [showAdPopup, setShowAdPopup] = useState(false);
   const [quizId, setQuizId] = useState<string | null>(null);
 
   useEffect(() => {
-    // In a real app, we would fetch this data from a state management store or API
     const storedQuestions = sessionStorage.getItem('quizQuestions');
     const storedTime = sessionStorage.getItem('quizTime');
     const storedFile = sessionStorage.getItem('quizFile');
     const storedQuizId = sessionStorage.getItem('quizId');
     
-    if (!storedQuestions || !storedTime) {
-      // If no quiz data, redirect back to create page
-      toast.error("No quiz data found. Please create a new quiz.");
+    if (!storedQuestions) {
+      toast.error("No quiz questions found. Please create a new quiz.");
       navigate('/create');
       return;
     }
     
-    setQuestions(JSON.parse(storedQuestions));
-    setTimeMinutes(parseInt(storedTime, 10));
-    setFileName(storedFile || "Document");
-    if (storedQuizId) setQuizId(storedQuizId);
+    try {
+      const parsedQuestions = JSON.parse(storedQuestions);
+      setQuestions(parsedQuestions);
+      if (storedTime) setTimeInMinutes(parseInt(storedTime));
+      if (storedFile) setFileTitle(storedFile);
+      if (storedQuizId) setQuizId(storedQuizId);
+    } catch (error) {
+      console.error("Error parsing questions:", error);
+      toast.error("There was a problem loading the quiz. Please try again.");
+      navigate('/create');
+    }
   }, [navigate]);
 
-  const handleAnswerSubmit = (questionId: number, answer: string) => {
-    setQuestions(prevQuestions => 
-      prevQuestions.map(q => 
-        q.id === questionId ? { ...q, userAnswer: answer } : q
-      )
-    );
+  const handleAnswerSelect = (selectedOption: string) => {
+    const updatedQuestions = [...questions];
+    updatedQuestions[currentQuestionIndex].userAnswer = selectedOption;
+    setQuestions(updatedQuestions);
   };
 
-  const handleNextQuestion = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
+  const goToPreviousQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(currentQuestionIndex - 1);
     }
   };
 
-  const handlePrevQuestion = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
+  const goToNextQuestion = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
 
@@ -68,162 +81,205 @@ const QuizPage = () => {
     setIsQuizCompleted(true);
     
     try {
+      // Show ad popup
+      setShowAdPopup(true);
+      
       // If we have a quizId, use the API to submit the quiz
       if (quizId) {
         const answers = questions.map(q => q.userAnswer || ""); // Get all user answers
-        const results = await submitQuizAPI(quizId, answers);
-        
-        // Store results in session storage
-        sessionStorage.setItem('quizResults', JSON.stringify(results.detailed_results));
-        sessionStorage.setItem('quizScore', results.score_percentage.toString());
-        sessionStorage.setItem('quizCorrect', results.correct_answers.toString());
-        sessionStorage.setItem('quizTotal', results.total_questions.toString());
+        try {
+          const results = await submitQuizAPI(quizId, answers);
+          
+          // Store results in session storage
+          sessionStorage.setItem('quizResults', JSON.stringify(results.detailed_results));
+          sessionStorage.setItem('quizScorePercentage', results.score_percentage.toString());
+          sessionStorage.setItem('quizCorrectAnswers', results.correct_answers.toString());
+          sessionStorage.setItem('quizTotalQuestions', results.total_questions.toString());
+          
+          // Navigate to results page
+          setTimeout(() => {
+            navigate('/results');
+          }, 1000);
+        } catch (error: any) {
+          console.error("Error submitting quiz:", error);
+          handleFallbackSubmission();
+        }
       } else {
-        // Fallback to local storage if no quizId (mock mode)
-        sessionStorage.setItem('quizResults', JSON.stringify(questions));
+        // If no quizId, use mock results
+        handleFallbackSubmission();
       }
-      
-      navigate('/results');
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit quiz. Your answers have been saved locally.");
-      // Store results locally as fallback
-      sessionStorage.setItem('quizResults', JSON.stringify(questions));
-      navigate('/results');
+    } catch (error) {
+      console.error("Error submitting quiz:", error);
+      toast.error("There was a problem submitting your quiz. Please try again.");
+      setIsQuizCompleted(false);
     }
   };
-
-  const currentQuestion = questions[currentQuestionIndex];
-  const answeredCount = questions.filter(q => q.userAnswer).length;
   
-  // Set page title
-  useEffect(() => {
-    document.title = `Quiz in Progress | AIExam`;
-    return () => {
-      document.title = "AIExam";
-    };
-  }, []);
+  const handleFallbackSubmission = () => {
+    // Calculate mock results
+    const totalQuestions = questions.length;
+    let correctAnswers = 0;
+    
+    // Mock detailed results
+    const detailedResults = questions.map((q, index) => {
+      const mockCorrectAnswer = q.options[0]; // First option is always correct in mock data
+      const isCorrect = q.userAnswer === mockCorrectAnswer;
+      if (isCorrect) correctAnswers++;
+      
+      return {
+        question: q.question,
+        user_answer: q.userAnswer || "",
+        correct_answer: mockCorrectAnswer,
+        is_correct: isCorrect,
+        explanation: `This is a mock explanation for question ${index + 1}.`
+      };
+    });
+    
+    const scorePercentage = (correctAnswers / totalQuestions) * 100;
+    
+    // Store in session storage
+    sessionStorage.setItem('quizResults', JSON.stringify(detailedResults));
+    sessionStorage.setItem('quizScorePercentage', scorePercentage.toString());
+    sessionStorage.setItem('quizCorrectAnswers', correctAnswers.toString());
+    sessionStorage.setItem('quizTotalQuestions', totalQuestions.toString());
+    
+    // Navigate to results page
+    setTimeout(() => {
+      navigate('/results');
+    }, 1000);
+  };
+
+  const getCompletionPercentage = () => {
+    const answeredQuestions = questions.filter(q => q.userAnswer).length;
+    return (answeredQuestions / questions.length) * 100;
+  };
 
   if (questions.length === 0) {
     return (
       <PageLayout>
-        <div className="flex justify-center items-center min-h-[60vh]">
-          <div className="animate-pulse-light text-center">
-            <p className="text-xl text-gray-600">Loading quiz...</p>
-          </div>
+        <div className="content-container py-12 text-center">
+          <p>Loading quiz questions...</p>
         </div>
       </PageLayout>
     );
   }
 
+  const currentQuestion = questions[currentQuestionIndex];
+  const progress = getCompletionPercentage();
+
   return (
     <PageLayout>
-      {/* Timer */}
-      <Timer 
-        totalSeconds={timeMinutes * 60} 
-        onTimeEnd={handleTimeEnd} 
-      />
-
-      {/* Google Ad Banner - Top */}
-      <div className="content-container py-4">
-        <div className="text-sm text-gray-500 text-center">Advertisement</div>
-        <div className="h-[90px] bg-gray-100 flex items-center justify-center border border-dashed border-gray-300">
-          <p className="text-gray-400">Google Ad Space</p>
-        </div>
-      </div>
-
       <div className="content-container py-8">
-        <div className="mb-8">
-          <div className="flex items-center space-x-2 mb-2">
-            <FileText className="h-4 w-4 text-gray-500" />
-            <span className="text-sm text-gray-500">{fileName}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold">
-              Quiz in Progress
-            </h1>
-            <div className="bg-quiz-accent text-quiz-primary px-3 py-1 rounded-full text-sm font-medium">
-              {answeredCount}/{questions.length} Answered
+        <div className="max-w-3xl mx-auto">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
+            <div className="mb-4 md:mb-0">
+              <h1 className="text-2xl font-bold gradient-heading mb-1">Quiz in Progress</h1>
+              <div className="flex items-center text-sm text-gray-600">
+                <FileText className="h-4 w-4 mr-2" />
+                <span>{fileTitle}</span>
+              </div>
             </div>
-          </div>
-        </div>
-
-        {currentQuestion && (
-          <div className="mb-8">
-            <QuizQuestion 
-              question={currentQuestion} 
-              onAnswerSubmit={handleAnswerSubmit} 
+            
+            <Timer 
+              initialMinutes={timeInMinutes} 
+              onTimeEnd={handleTimeEnd}
+              isQuizCompleted={isQuizCompleted}
             />
           </div>
-        )}
+          
+          {/* Top ad banner */}
+          <AdBanner size="small" className="mb-6" />
+          
+          <div className="mb-6">
+            <div className="flex justify-between text-sm text-gray-600 mb-2">
+              <span>Progress</span>
+              <span>{Math.round(progress)}% Complete</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
 
-        <div className="flex flex-col md:flex-row justify-between space-y-4 md:space-y-0">
-          <div className="flex space-x-2">
+          <div className="quiz-card p-6 mb-6">
+            <div className="mb-4 flex justify-between">
+              <span className="font-medium text-quiz-primary">
+                Question {currentQuestionIndex + 1} of {questions.length}
+              </span>
+              {currentQuestion.userAnswer && (
+                <span className="text-green-600 text-sm">Answered</span>
+              )}
+            </div>
+            
+            <QuizQuestion
+              question={currentQuestion.question}
+              options={currentQuestion.options}
+              selectedOption={currentQuestion.userAnswer}
+              onSelect={handleAnswerSelect}
+              questionIndex={currentQuestionIndex}
+            />
+          </div>
+
+          <div className="flex justify-between items-center">
             <button
-              onClick={handlePrevQuestion}
+              onClick={goToPreviousQuestion}
               disabled={currentQuestionIndex === 0}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
+              className={`flex items-center space-x-2 px-4 py-2 rounded ${
                 currentQuestionIndex === 0
-                  ? "opacity-50 cursor-not-allowed"
-                  : "hover:bg-gray-50"
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-gray-700 hover:bg-gray-100"
               }`}
             >
               <ArrowLeft className="h-4 w-4" />
               <span>Previous</span>
             </button>
-            
-            <button
-              onClick={handleNextQuestion}
-              disabled={currentQuestionIndex === questions.length - 1}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-md border ${
-                currentQuestionIndex === questions.length - 1
-                  ? "opacity-50 cursor-not-allowed"
-                  : "hover:bg-gray-50"
-              }`}
-            >
-              <span>Next</span>
-              <ArrowRight className="h-4 w-4" />
-            </button>
+
+            {currentQuestionIndex < questions.length - 1 ? (
+              <button
+                onClick={goToNextQuestion}
+                className="flex items-center space-x-2 px-4 py-2 rounded text-quiz-primary hover:bg-quiz-accent/30"
+              >
+                <span>Next</span>
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmitQuiz}
+                disabled={isQuizCompleted}
+                className="quiz-button-secondary px-6 py-2"
+              >
+                {isQuizCompleted ? "Submitting..." : "Submit Quiz"}
+              </button>
+            )}
           </div>
           
-          <button
-            onClick={handleSubmitQuiz}
-            disabled={isQuizCompleted}
-            className="quiz-button-secondary px-6 py-2"
-          >
-            Submit Quiz
-          </button>
-        </div>
-
-        <div className="mt-8">
-          <div className="bg-gray-100 p-2 rounded-md">
-            <div className="flex overflow-x-auto py-2 space-x-2">
+          {/* Question navigation */}
+          <div className="mt-8">
+            <p className="text-sm text-gray-600 mb-3">Quick Navigation:</p>
+            <div className="flex flex-wrap gap-2">
               {questions.map((q, index) => (
-                <button 
-                  key={q.id}
+                <button
+                  key={index}
                   onClick={() => setCurrentQuestionIndex(index)}
-                  className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-md font-medium transition-colors ${
-                    index === currentQuestionIndex
-                      ? "bg-quiz-primary text-white"
-                      : q.userAnswer
-                      ? "bg-quiz-accent text-quiz-primary"
-                      : "bg-white text-gray-700 border"
-                  }`}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm
+                    ${currentQuestionIndex === index ? 'bg-quiz-primary text-white' : 
+                      q.userAnswer ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}
                 >
-                  {q.id}
+                  {index + 1}
                 </button>
               ))}
             </div>
           </div>
-        </div>
-
-        {/* Google Ad Banner - Bottom */}
-        <div className="mt-8">
-          <div className="text-sm text-gray-500 text-center">Advertisement</div>
-          <div className="h-[250px] bg-gray-100 flex items-center justify-center border border-dashed border-gray-300">
-            <p className="text-gray-400">Google Ad Space</p>
-          </div>
+          
+          {/* Bottom ad banner */}
+          <AdBanner size="medium" className="mt-8" />
         </div>
       </div>
+      
+      {/* Ad popup when quiz is completed */}
+      {showAdPopup && (
+        <AdPopup
+          trigger="quiz-completion"
+          onClose={() => setShowAdPopup(false)}
+        />
+      )}
     </PageLayout>
   );
 };

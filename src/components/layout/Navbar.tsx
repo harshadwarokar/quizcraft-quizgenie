@@ -1,14 +1,19 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Menu, X, LogIn, UserCircle } from "lucide-react";
+import { BookOpen, Menu, X, LogIn, UserCircle, Settings, LogOut, BarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import UserProfile from "@/components/UserProfile";
+import AdPopup from "@/components/AdPopup";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<{name: string, email: string, avatar: string} | null>(null);
+  const [showLoginAd, setShowLoginAd] = useState(false);
   const navigate = useNavigate();
 
   const toggleMenu = () => {
@@ -29,6 +34,9 @@ const Navbar = () => {
       email: "john.doe@example.com",
       avatar: "https://ui-avatars.com/api/?name=John+Doe&background=8B5CF6&color=fff"
     });
+    
+    // Show ad after login
+    setShowLoginAd(true);
   };
 
   const handleLogout = () => {
@@ -66,28 +74,59 @@ const Navbar = () => {
           </button>
           
           {isLoggedIn ? (
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="flex items-center space-x-2">
-                  <img 
-                    src={user?.avatar}
-                    alt="User avatar" 
-                    className="w-8 h-8 rounded-full"
-                  />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56 p-2">
-                <div className="flex flex-col space-y-2">
-                  <div className="px-2 py-1.5">
-                    <p className="text-sm font-medium">{user?.name}</p>
-                    <p className="text-xs text-gray-500">{user?.email}</p>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Avatar className="h-8 w-8 cursor-pointer">
+                  <AvatarImage src={user?.avatar} alt={user?.name || "User"} />
+                  <AvatarFallback className="bg-quiz-primary text-white">
+                    {user?.name?.charAt(0) || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </SheetTrigger>
+              <SheetContent className="overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>Your Profile</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6">
+                  {user && <UserProfile user={user} />}
+                  
+                  <div className="mt-6 space-y-2">
+                    <Button 
+                      variant="outline" 
+                      className="w-full flex justify-start"
+                      onClick={() => navigateTo("/profile")}
+                    >
+                      <UserCircle className="h-4 w-4 mr-2" />
+                      View Profile
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full flex justify-start"
+                      onClick={() => navigateTo("/results")}
+                    >
+                      <BarChart className="h-4 w-4 mr-2" />
+                      My Results
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full flex justify-start"
+                      onClick={() => navigateTo("/settings")}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Settings
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full flex justify-start text-red-500 hover:text-red-600"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign out
+                    </Button>
                   </div>
-                  <Button variant="ghost" className="w-full justify-start text-sm" onClick={handleLogout}>
-                    Sign out
-                  </Button>
                 </div>
-              </PopoverContent>
-            </Popover>
+              </SheetContent>
+            </Sheet>
           ) : (
             <Button 
               onClick={handleLogin} 
@@ -103,13 +142,68 @@ const Navbar = () => {
         {/* Mobile Menu Button */}
         <div className="md:hidden flex items-center space-x-2">
           {isLoggedIn ? (
-            <button className="mr-2">
-              <img 
-                src={user?.avatar}
-                alt="User avatar" 
-                className="w-8 h-8 rounded-full"
-              />
-            </button>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Avatar className="h-8 w-8 cursor-pointer mr-2">
+                  <AvatarImage src={user?.avatar} alt={user?.name || "User"} />
+                  <AvatarFallback className="bg-quiz-primary text-white">
+                    {user?.name?.charAt(0) || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Your Profile</SheetTitle>
+                </SheetHeader>
+                <div className="mt-6">
+                  {user && <UserProfile user={user} />}
+                  
+                  <div className="mt-6 space-y-2">
+                    <Button 
+                      variant="outline" 
+                      className="w-full flex justify-start"
+                      onClick={() => {
+                        navigateTo("/profile");
+                        setIsMenuOpen(false);
+                      }}
+                    >
+                      <UserCircle className="h-4 w-4 mr-2" />
+                      View Profile
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full flex justify-start"
+                      onClick={() => {
+                        navigateTo("/results");
+                        setIsMenuOpen(false);
+                      }}
+                    >
+                      <BarChart className="h-4 w-4 mr-2" />
+                      My Results
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full flex justify-start"
+                      onClick={() => {
+                        navigateTo("/settings");
+                        setIsMenuOpen(false);
+                      }}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Settings
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full flex justify-start text-red-500 hover:text-red-600"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign out
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           ) : (
             <Button 
               onClick={handleLogin} 
@@ -166,6 +260,14 @@ const Navbar = () => {
             )}
           </div>
         </div>
+      )}
+      
+      {/* Ad popup after login */}
+      {showLoginAd && (
+        <AdPopup 
+          trigger="login" 
+          onClose={() => setShowLoginAd(false)} 
+        />
       )}
     </nav>
   );

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PageLayout from "@/components/layout/PageLayout";
 import FileUpload from "@/components/FileUpload";
@@ -9,9 +9,9 @@ import { generateMockQuestions } from "@/utils/mockData";
 import { ArrowRight } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
-import { generateQuizFromFile } from "@/utils/api";
-import { checkApiHealth } from "@/utils/api";
-import { useEffect } from "react";
+import { generateQuizFromFile, checkApiHealth } from "@/utils/api";
+import AdBanner from "@/components/AdBanner";
+import AdPopup from "@/components/AdPopup";
 
 const CreateQuiz = () => {
   const navigate = useNavigate();
@@ -22,6 +22,7 @@ const CreateQuiz = () => {
   const [minutes, setMinutes] = useState(15);
   const [isGenerating, setIsGenerating] = useState(false);
   const [apiAvailable, setApiAvailable] = useState<boolean | null>(null);
+  const [showAdPopup, setShowAdPopup] = useState(false);
 
   useEffect(() => {
     // Check if the API is available
@@ -59,6 +60,8 @@ const CreateQuiz = () => {
       return;
     }
 
+    // Show ad popup
+    setShowAdPopup(true);
     setIsGenerating(true);
     
     try {
@@ -80,51 +83,63 @@ const CreateQuiz = () => {
         }
         
         if (mockFile) {
-          const quiz = await generateQuizFromFile(mockFile, questions, minutes);
-          
-          // Store in session storage for the quiz page
-          sessionStorage.setItem('quizQuestions', JSON.stringify(quiz.questions));
-          sessionStorage.setItem('quizTime', minutes.toString());
-          sessionStorage.setItem('quizId', quiz.quiz_id);
-          
-          if (file) sessionStorage.setItem('quizFile', file.name);
-          else if (textContent) sessionStorage.setItem('quizFile', 'Text Input');
-          else if (videoUrl) sessionStorage.setItem('quizFile', 'YouTube Video');
-          
-          navigate('/quiz');
+          try {
+            const quiz = await generateQuizFromFile(mockFile, questions, minutes);
+            
+            // Store in session storage for the quiz page
+            sessionStorage.setItem('quizQuestions', JSON.stringify(quiz.questions));
+            sessionStorage.setItem('quizTime', minutes.toString());
+            sessionStorage.setItem('quizId', quiz.quiz_id);
+            
+            if (file) sessionStorage.setItem('quizFile', file.name);
+            else if (textContent) sessionStorage.setItem('quizFile', 'Text Input');
+            else if (videoUrl) sessionStorage.setItem('quizFile', 'YouTube Video');
+            
+            navigate('/quiz');
+          } catch (error: any) {
+            console.error('Error generating quiz:', error);
+            // Fall back to mock data if there's an API error
+            toast.error(`API Error: ${error.message}. Using mock data instead.`);
+            fallbackToMockData();
+          }
         }
       } else {
         // Fallback to mock data
-        setTimeout(() => {
-          const mockQuestions = generateMockQuestions(questions);
-          
-          sessionStorage.setItem('quizQuestions', JSON.stringify(mockQuestions));
-          sessionStorage.setItem('quizTime', minutes.toString());
-          
-          if (file) sessionStorage.setItem('quizFile', file.name);
-          else if (textContent) sessionStorage.setItem('quizFile', 'Text Input');
-          else if (videoUrl) sessionStorage.setItem('quizFile', 'YouTube Video');
-          
-          navigate('/quiz');
-        }, 2000);
+        fallbackToMockData();
       }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to generate quiz. Please try again.");
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const fallbackToMockData = () => {
+    setTimeout(() => {
+      const mockQuestions = generateMockQuestions(questions);
+      
+      sessionStorage.setItem('quizQuestions', JSON.stringify(mockQuestions));
+      sessionStorage.setItem('quizTime', minutes.toString());
+      
+      if (file) sessionStorage.setItem('quizFile', file.name);
+      else if (textContent) sessionStorage.setItem('quizFile', 'Text Input');
+      else if (videoUrl) sessionStorage.setItem('quizFile', 'YouTube Video');
+      
+      navigate('/quiz');
+    }, 2000);
   };
 
   return (
     <PageLayout>
       <section className="py-12">
         <div className="content-container max-w-4xl">
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <h1 className="text-3xl font-bold gradient-heading mb-4">Create Your Quiz</h1>
             <p className="text-gray-600">
               Upload your document, paste text, or provide a YouTube URL to get started
             </p>
           </div>
+
+          {/* Top ad banner */}
+          <AdBanner size="medium" className="mb-8" />
 
           {apiAvailable === false && (
             <Alert variant="destructive" className="mb-6">
@@ -172,7 +187,10 @@ const CreateQuiz = () => {
             </div>
           </div>
           
-          <div className="mt-12 bg-blue-50 p-6 rounded-lg border border-blue-100">
+          {/* Middle ad banner */}
+          <AdBanner size="small" className="my-8" />
+          
+          <div className="mt-8 bg-blue-50 p-6 rounded-lg border border-blue-100">
             <h3 className="text-lg font-medium text-blue-800 mb-3">Tips for Best Results</h3>
             <ul className="list-disc list-inside space-y-2 text-blue-700">
               <li>Use clear, well-formatted documents for better question generation</li>
@@ -183,15 +201,18 @@ const CreateQuiz = () => {
             </ul>
           </div>
 
-          {/* Google Ad Banner */}
-          <div className="mt-8 p-4 bg-gray-100 text-center rounded">
-            <div className="text-sm text-gray-500">Advertisement</div>
-            <div className="h-[250px] flex items-center justify-center border border-dashed border-gray-300">
-              <p className="text-gray-400">Google Ad Space</p>
-            </div>
-          </div>
+          {/* Bottom ad banner */}
+          <AdBanner size="medium" className="mt-8" />
         </div>
       </section>
+      
+      {/* Ad popup when generating quiz */}
+      {showAdPopup && (
+        <AdPopup
+          trigger="quiz-generation"
+          onClose={() => setShowAdPopup(false)}
+        />
+      )}
     </PageLayout>
   );
 };
