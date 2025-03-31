@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 
-interface QuizQuestion {
+export interface QuizQuestion {
   question: string;
   options: string[];
   userAnswer?: string;
