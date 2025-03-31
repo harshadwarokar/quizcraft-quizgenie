@@ -6,6 +6,7 @@ import QuizQuestion, { Question } from "@/components/QuizQuestion";
 import Timer from "@/components/Timer";
 import { toast } from "sonner";
 import { ArrowRight, ArrowLeft, FileText } from "lucide-react";
+import { submitQuiz } from "@/utils/api";
 
 const QuizPage = () => {
   const navigate = useNavigate();
@@ -14,12 +15,14 @@ const QuizPage = () => {
   const [timeMinutes, setTimeMinutes] = useState(15);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isQuizCompleted, setIsQuizCompleted] = useState(false);
+  const [quizId, setQuizId] = useState<string | null>(null);
 
   useEffect(() => {
     // In a real app, we would fetch this data from a state management store or API
     const storedQuestions = sessionStorage.getItem('quizQuestions');
     const storedTime = sessionStorage.getItem('quizTime');
     const storedFile = sessionStorage.getItem('quizFile');
+    const storedQuizId = sessionStorage.getItem('quizId');
     
     if (!storedQuestions || !storedTime) {
       // If no quiz data, redirect back to create page
@@ -31,6 +34,7 @@ const QuizPage = () => {
     setQuestions(JSON.parse(storedQuestions));
     setTimeMinutes(parseInt(storedTime, 10));
     setFileName(storedFile || "Document");
+    if (storedQuizId) setQuizId(storedQuizId);
   }, [navigate]);
 
   const handleAnswerSubmit = (questionId: number, answer: string) => {
@@ -58,12 +62,34 @@ const QuizPage = () => {
     submitQuiz();
   };
 
-  const submitQuiz = () => {
-    // In a real app, we would send the answers to an API for evaluation
-    // For now, we'll just store them in session storage and navigate to results
-    sessionStorage.setItem('quizResults', JSON.stringify(questions));
+  const submitQuiz = async () => {
+    // Mark the quiz as completed to prevent multiple submissions
+    if (isQuizCompleted) return;
     setIsQuizCompleted(true);
-    navigate('/results');
+    
+    try {
+      // If we have a quizId, use the API to submit the quiz
+      if (quizId) {
+        const answers = questions.map(q => q.userAnswer || ""); // Get all user answers
+        const results = await submitQuiz(quizId, answers);
+        
+        // Store results in session storage
+        sessionStorage.setItem('quizResults', JSON.stringify(results.detailed_results));
+        sessionStorage.setItem('quizScore', results.score_percentage.toString());
+        sessionStorage.setItem('quizCorrect', results.correct_answers.toString());
+        sessionStorage.setItem('quizTotal', results.total_questions.toString());
+      } else {
+        // Fallback to local storage if no quizId (mock mode)
+        sessionStorage.setItem('quizResults', JSON.stringify(questions));
+      }
+      
+      navigate('/results');
+    } catch (error: any) {
+      toast.error(error.message || "Failed to submit quiz. Your answers have been saved locally.");
+      // Store results locally as fallback
+      sessionStorage.setItem('quizResults', JSON.stringify(questions));
+      navigate('/results');
+    }
   };
 
   const currentQuestion = questions[currentQuestionIndex];
@@ -71,9 +97,9 @@ const QuizPage = () => {
   
   // Set page title
   useEffect(() => {
-    document.title = `Quiz in Progress | QuizCraft`;
+    document.title = `Quiz in Progress | AIExam`;
     return () => {
-      document.title = "QuizCraft";
+      document.title = "AIExam";
     };
   }, []);
 
@@ -96,6 +122,14 @@ const QuizPage = () => {
         totalSeconds={timeMinutes * 60} 
         onTimeEnd={handleTimeEnd} 
       />
+
+      {/* Google Ad Banner - Top */}
+      <div className="content-container py-4">
+        <div className="text-sm text-gray-500 text-center">Advertisement</div>
+        <div className="h-[90px] bg-gray-100 flex items-center justify-center border border-dashed border-gray-300">
+          <p className="text-gray-400">Google Ad Space</p>
+        </div>
+      </div>
 
       <div className="content-container py-8">
         <div className="mb-8">
@@ -153,6 +187,7 @@ const QuizPage = () => {
           
           <button
             onClick={submitQuiz}
+            disabled={isQuizCompleted}
             className="quiz-button-secondary px-6 py-2"
           >
             Submit Quiz
@@ -178,6 +213,14 @@ const QuizPage = () => {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* Google Ad Banner - Bottom */}
+        <div className="mt-8">
+          <div className="text-sm text-gray-500 text-center">Advertisement</div>
+          <div className="h-[250px] bg-gray-100 flex items-center justify-center border border-dashed border-gray-300">
+            <p className="text-gray-400">Google Ad Space</p>
           </div>
         </div>
       </div>
