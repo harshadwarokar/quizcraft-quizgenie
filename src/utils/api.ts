@@ -103,7 +103,8 @@ export const submitQuiz = async (
 export const checkApiHealth = async (): Promise<boolean> => {
   try {
     const response = await api.get('/health');
-    return response.status === 'healthy';
+    // Fix the type comparison issue by properly checking the response
+    return response && typeof response === 'object' && response.status === 'healthy';
   } catch (error) {
     console.error('API health check failed:', error);
     return false;
