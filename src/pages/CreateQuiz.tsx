@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PageLayout from "@/components/layout/PageLayout";
@@ -65,47 +64,41 @@ const CreateQuiz = () => {
     setIsGenerating(true);
     
     try {
-      if (apiAvailable) {
-        // Use the real API if available
-        let mockFile = file;
-        
-        // If text was provided instead of a file, create a text file
-        if (textContent && !file) {
-          const blob = new Blob([textContent], { type: 'text/plain' });
-          mockFile = new File([blob], 'text-input.txt', { type: 'text/plain' });
+      // Use the real API regardless of apiAvailable status since we want to parse the JSON output
+      let mockFile = file;
+      
+      // If text was provided instead of a file, create a text file
+      if (textContent && !file) {
+        const blob = new Blob([textContent], { type: 'text/plain' });
+        mockFile = new File([blob], 'text-input.txt', { type: 'text/plain' });
+      }
+      
+      // For YouTube URL, we'd need to send it differently or adapt the API
+      // For now, we'll create a text file with the URL
+      if (videoUrl && !file && !textContent) {
+        const blob = new Blob([videoUrl], { type: 'text/plain' });
+        mockFile = new File([blob], 'youtube-url.txt', { type: 'text/plain' });
+      }
+      
+      if (mockFile) {
+        try {
+          const quiz = await generateQuizFromFile(mockFile, questions, minutes);
+          
+          // Store in session storage for the quiz page
+          sessionStorage.setItem('quizQuestions', JSON.stringify(quiz.questions));
+          sessionStorage.setItem('quizTime', minutes.toString());
+          sessionStorage.setItem('quizId', quiz.quiz_id);
+          
+          if (file) sessionStorage.setItem('quizFile', file.name);
+          else if (textContent) sessionStorage.setItem('quizFile', 'Text Input');
+          else if (videoUrl) sessionStorage.setItem('quizFile', 'YouTube Video');
+          
+          navigate('/quiz');
+        } catch (error: any) {
+          console.error('Error generating quiz:', error);
+          toast.error(`API Error: ${error.message}. Using mock data as fallback.`);
+          fallbackToMockData();
         }
-        
-        // For YouTube URL, we'd need to send it differently or adapt the API
-        // For now, we'll create a text file with the URL
-        if (videoUrl && !file && !textContent) {
-          const blob = new Blob([videoUrl], { type: 'text/plain' });
-          mockFile = new File([blob], 'youtube-url.txt', { type: 'text/plain' });
-        }
-        
-        if (mockFile) {
-          try {
-            const quiz = await generateQuizFromFile(mockFile, questions, minutes);
-            
-            // Store in session storage for the quiz page
-            sessionStorage.setItem('quizQuestions', JSON.stringify(quiz.questions));
-            sessionStorage.setItem('quizTime', minutes.toString());
-            sessionStorage.setItem('quizId', quiz.quiz_id);
-            
-            if (file) sessionStorage.setItem('quizFile', file.name);
-            else if (textContent) sessionStorage.setItem('quizFile', 'Text Input');
-            else if (videoUrl) sessionStorage.setItem('quizFile', 'YouTube Video');
-            
-            navigate('/quiz');
-          } catch (error: any) {
-            console.error('Error generating quiz:', error);
-            // Fall back to mock data if there's an API error
-            toast.error(`API Error: ${error.message}. Using mock data instead.`);
-            fallbackToMockData();
-          }
-        }
-      } else {
-        // Fallback to mock data
-        fallbackToMockData();
       }
     } finally {
       setIsGenerating(false);
@@ -113,6 +106,9 @@ const CreateQuiz = () => {
   };
 
   const fallbackToMockData = () => {
+    // Only use this as a last resort if API completely fails
+    toast.warning("Using mock data as fallback. Real quiz data could not be generated.");
+    
     setTimeout(() => {
       const mockQuestions = generateMockQuestions(questions);
       
@@ -124,7 +120,7 @@ const CreateQuiz = () => {
       else if (videoUrl) sessionStorage.setItem('quizFile', 'YouTube Video');
       
       navigate('/quiz');
-    }, 2000);
+    }, 1000);
   };
 
   return (

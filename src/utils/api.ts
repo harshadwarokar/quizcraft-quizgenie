@@ -74,6 +74,35 @@ export const generateQuizFromFile = async (
       },
     });
 
+    // Handle the case where the API returns raw JSON string
+    if (response.data && typeof response.data === 'string' && response.data.includes('"question"')) {
+      try {
+        // Try to extract just the JSON array from the response
+        const jsonMatch = response.data.match(/\[\s*\{.*\}\s*\]/s);
+        if (jsonMatch) {
+          const jsonArray = JSON.parse(jsonMatch[0]);
+          
+          // Convert the raw JSON array into the expected GeneratedQuiz format
+          const generatedQuiz: GeneratedQuiz = {
+            quiz_id: new Date().getTime().toString(), // Generate a temporary quiz ID
+            questions: jsonArray.map((q: any) => ({
+              question: q.question,
+              options: q.options,
+              correct_answer: q.correct_answer,
+              explanation: q.explanation
+            })),
+            time_limit: timeLimit,
+            total_questions: jsonArray.length
+          };
+          
+          return generatedQuiz;
+        }
+      } catch (parseError) {
+        console.error('Error parsing JSON from API response:', parseError);
+        throw new Error('Failed to parse quiz data from API response');
+      }
+    }
+
     if (response.data.success) {
       return response.data.data as GeneratedQuiz;
     } else {
@@ -104,7 +133,7 @@ export const checkApiHealth = async (): Promise<boolean> => {
   try {
     const response = await api.get('/health');
     // Fix the type comparison issue by properly checking the response
-    return response && typeof response === 'object' && response.status === 'healthy';
+    return response && typeof response === 'object' && response.status === "healthy";
   } catch (error) {
     console.error('API health check failed:', error);
     return false;

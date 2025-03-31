@@ -5,6 +5,8 @@ interface QuizQuestion {
   question: string;
   options: string[];
   userAnswer?: string;
+  correct_answer?: string;
+  explanation?: string;
 }
 
 interface QuizQuestionProps {

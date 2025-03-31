@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PageLayout from "@/components/layout/PageLayout";
-import QuizQuestion from "@/components/QuizQuestion";
+import QuizQuestion, { QuizQuestion as QuizQuestionType } from "@/components/QuizQuestion";
 import { Progress } from "@/components/ui/progress";
 import Timer from "@/components/Timer";
 import { toast } from "sonner";
@@ -11,15 +10,9 @@ import { submitQuiz as submitQuizAPI } from "@/utils/api";
 import AdBanner from "@/components/AdBanner";
 import AdPopup from "@/components/AdPopup";
 
-interface Question {
-  question: string;
-  options: string[];
-  userAnswer?: string;
-}
-
 const QuizPage = () => {
   const navigate = useNavigate();
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [questions, setQuestions] = useState<QuizQuestionType[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [timeInMinutes, setTimeInMinutes] = useState(15);
   const [fileTitle, setFileTitle] = useState<string>("");
@@ -105,7 +98,7 @@ const QuizPage = () => {
           handleFallbackSubmission();
         }
       } else {
-        // If no quizId, use mock results
+        // If no quizId, use the correct_answer field if available in questions
         handleFallbackSubmission();
       }
     } catch (error) {
@@ -116,22 +109,25 @@ const QuizPage = () => {
   };
   
   const handleFallbackSubmission = () => {
-    // Calculate mock results
+    // Calculate results using correct_answer if available from the API
     const totalQuestions = questions.length;
     let correctAnswers = 0;
     
-    // Mock detailed results
-    const detailedResults = questions.map((q, index) => {
-      const mockCorrectAnswer = q.options[0]; // First option is always correct in mock data
-      const isCorrect = q.userAnswer === mockCorrectAnswer;
+    // Process detailed results
+    const detailedResults = questions.map((q) => {
+      // If we have the correct_answer from the API, use it
+      const correctAnswer = q.correct_answer || q.options[0]; // Default to first option if no correct answer
+      const userAnswer = q.userAnswer || "";
+      const isCorrect = userAnswer === correctAnswer;
+      
       if (isCorrect) correctAnswers++;
       
       return {
         question: q.question,
-        user_answer: q.userAnswer || "",
-        correct_answer: mockCorrectAnswer,
+        user_answer: userAnswer,
+        correct_answer: correctAnswer,
         is_correct: isCorrect,
-        explanation: `This is a mock explanation for question ${index + 1}.`
+        explanation: q.explanation || `Explanation for ${q.question}`
       };
     });
     
