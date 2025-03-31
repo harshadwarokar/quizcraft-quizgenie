@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8000'; // Replace with actual API URL in production
@@ -162,14 +161,12 @@ export const submitQuiz = async (
 // Health check
 export const checkApiHealth = async (): Promise<boolean> => {
   try {
-    const response = await api.get('/health');
-    // Fix the type comparison issue by checking the response structure
-    return response && 
-           typeof response === 'object' && 
-           'status' in response && 
-           response.status === "healthy";
+    const response = await fetch(`${API_URL}/health-check`);
+    
+    // Convert status to number before comparison
+    return response.ok && response.status === 200;
   } catch (error) {
-    console.error('API health check failed:', error);
+    console.error("API health check error:", error);
     return false;
   }
 };
